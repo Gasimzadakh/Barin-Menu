@@ -1,8 +1,8 @@
 (function () {
   "use strict";
 
-  function slug(idx) {
-    return "pkg-" + idx;
+  function slug(str, idx) {
+    return "cat-" + idx;
   }
 
   function esc(s) {
@@ -12,57 +12,70 @@
     });
   }
 
-  function renderItem(item) {
-    var azHtml = item.az ? '<span class="item-az">' + esc(item.az) + "</span>" : "";
-    return '<li><span class="item-ru">' + esc(item.ru) + "</span>" + azHtml + "</li>";
-  }
+  function renderDish(item) {
+    var priceHtml = item.price
+      ? esc(item.price) + ' <span class="man">\u20BC</span>'
+      : "\u2014";
 
-  function renderSection(sec) {
-    var items = sec.items.map(renderItem).join("");
+    var newBadge = item.new ? '<span class="new-badge">NEW</span>' : "";
+
+    var noteHtml = item.note_ru
+      ? '<div class="dish-note">' + esc(item.note_ru) + "</div>"
+      : "";
+
+    var sub = "";
+    if (item.desc_ru) {
+      sub += '<div class="dish-desc">' + esc(item.desc_ru) + "</div>";
+      var az = item.desc_az || "";
+      var en = item.desc_en || "";
+      if (az || en) {
+        sub += '<div class="dish-intl">' + esc(az) + " / " + esc(en) + "</div>";
+      }
+    } else if (item.az || item.en) {
+      sub =
+        '<div class="dish-intl">' +
+        esc(item.az || "") +
+        " / " +
+        esc(item.en || "") +
+        "</div>";
+    }
+
     return (
-      '<div class="pkg-sec">' +
-      '<div class="pkg-sec-head">' +
-      '<div class="pkg-sec-ru">' + esc(sec.title_ru) + "</div>" +
-      '<span class="pkg-sec-az">' + esc(sec.title_az) + "</span>" +
+      '<div class="dish">' +
+      '<div class="dish-row">' +
+      '<span class="dish-name">' + esc(item.ru) + newBadge + "</span>" +
+      '<span class="dish-leader"></span>' +
+      '<span class="dish-price">' + priceHtml + "</span>" +
       "</div>" +
-      '<div class="pkg-sec-rule"></div>' +
-      '<ul class="pkg-list">' + items + "</ul>" +
+      noteHtml +
+      sub +
       "</div>"
     );
   }
 
-  function renderPackage(pkg, idx) {
-    var half = Math.ceil(pkg.sections.length / 2);
-    var colA = pkg.sections.slice(0, half).map(renderSection).join("");
-    var colB = pkg.sections.slice(half).map(renderSection).join("");
+  function renderCategory(cat, idx) {
+    var dishes = cat.items.map(renderDish).join("");
     return (
-      '<section class="package" id="' + slug(idx) + '">' +
-      '<div class="pkg-head">' +
-      '<div class="pkg-eyebrow">Банкетное меню &middot; Ziyafət menyusu</div>' +
-      '<div class="pkg-title">' + esc(pkg.title_ru) + "</div>" +
-      '<div class="price-line">' +
-      '<span class="rule"></span>' +
-      '<span class="price-num">' + esc(pkg.price) + "</span>" +
-      '<span class="price-unit">AZN</span>' +
-      '<span class="rule"></span>' +
+      '<section class="category" id="' + slug(cat.cat_ru, idx) + '">' +
+      '<div class="cat-heading">' +
+      "<h2>" + esc(cat.cat_ru) + "</h2>" +
+      '<span class="intl">' + esc(cat.cat_az) + " / " + esc(cat.cat_en) + "</span>" +
       "</div>" +
-      '<div class="price-caption">на человека / bir nəfərə</div>' +
-      "</div>" +
-      '<div class="pkg-columns">' +
-      '<div class="pkg-col">' + colA + "</div>" +
-      '<div class="pkg-col">' + colB + "</div>" +
-      "</div>" +
-      '<div class="pkg-service">+10% от суммы чека взимается за сервис</div>' +
+      dishes +
       "</section>"
     );
   }
 
   function renderNav(data) {
-    var track = document.getElementById("pkgnavTrack");
+    var track = document.getElementById("catnavTrack");
     track.innerHTML = data
-      .map(function (pkg, idx) {
+      .map(function (cat, idx) {
         return (
-          '<button data-target="' + slug(idx) + '">' + esc(pkg.title_ru) + "</button>"
+          '<button data-target="' +
+          slug(cat.cat_ru, idx) +
+          '">' +
+          esc(cat.cat_ru) +
+          "</button>"
         );
       })
       .join("");
@@ -70,17 +83,17 @@
 
   function initScrollSpy(data) {
     var buttons = Array.prototype.slice.call(
-      document.querySelectorAll(".pkgnav-track button")
+      document.querySelectorAll(".catnav-track button")
     );
-    var sections = data.map(function (pkg, idx) {
-      return document.getElementById(slug(idx));
+    var sections = data.map(function (cat, idx) {
+      return document.getElementById(slug(cat.cat_ru, idx));
     });
 
     buttons.forEach(function (btn) {
       btn.addEventListener("click", function () {
         var target = document.getElementById(btn.getAttribute("data-target"));
         if (target) {
-          var y = target.getBoundingClientRect().top + window.scrollY - 60;
+          var y = target.getBoundingClientRect().top + window.scrollY - 56;
           window.scrollTo({ top: y, behavior: "smooth" });
         }
       });
@@ -90,7 +103,7 @@
       buttons.forEach(function (b) {
         b.classList.toggle("active", b.getAttribute("data-target") === id);
       });
-      var activeBtn = document.querySelector(".pkgnav-track button.active");
+      var activeBtn = document.querySelector(".catnav-track button.active");
       if (activeBtn) {
         activeBtn.scrollIntoView({
           behavior: "smooth",
@@ -117,6 +130,18 @@
     if (buttons.length) setActive(buttons[0].getAttribute("data-target"));
   }
 
+  function initNavArrows() {
+    var track = document.getElementById("catnavTrack");
+    var left = document.getElementById("navLeft");
+    var right = document.getElementById("navRight");
+    left.addEventListener("click", function () {
+      track.scrollBy({ left: -160, behavior: "smooth" });
+    });
+    right.addEventListener("click", function () {
+      track.scrollBy({ left: 160, behavior: "smooth" });
+    });
+  }
+
   function initToTop() {
     var btn = document.getElementById("toTop");
     window.addEventListener("scroll", function () {
@@ -128,11 +153,12 @@
   }
 
   function init() {
-    var data = window.BANQUET_DATA || [];
-    var main = document.getElementById("packages");
-    main.innerHTML = data.map(renderPackage).join("");
+    var data = window.MENU_DATA || [];
+    var main = document.getElementById("menu");
+    main.innerHTML = data.map(renderCategory).join("");
     renderNav(data);
     initScrollSpy(data);
+    initNavArrows();
     initToTop();
   }
 
